@@ -763,9 +763,11 @@ public abstract class AbstractQueuedSynchronizer
         if (node == null)
             return;
 
+        // 设置该节点不再关联任何线程
         node.thread = null;
 
         // Skip cancelled predecessors
+        // 通过前继节点跳过取消状态的node
         Node pred = node.prev;
         while (pred.waitStatus > 0)
             node.prev = pred = pred.prev;
@@ -773,20 +775,33 @@ public abstract class AbstractQueuedSynchronizer
         // predNext is the apparent node to unsplice. CASes below will
         // fail if not, in which case, we lost race vs another cancel
         // or signal, so no further action is necessary.
+        // 获取过滤后的前继节点的后继节点
         Node predNext = pred.next;
 
         // Can use unconditional write instead of CAS here.
         // After this atomic step, other Nodes can skip past us.
         // Before, we are free of interference from other threads.
+        // 设置状态为取消状态
         node.waitStatus = Node.CANCELLED;
 
         // If we are the tail, remove ourselves.
+        /*
+         * 1.如果当前节点是tail：
+         * 尝试更新tail节点，设置tail为pred；
+         * 更新失败则返回，成功则设置tail的后继节点为null
+         */
         if (node == tail && compareAndSetTail(node, pred)) {
             compareAndSetNext(pred, predNext, null);
         } else {
             // If successor needs signal, try to set pred's next-link
             // so it will get one. Otherwise wake it up to propagate.
             int ws;
+            /*
+             * 2.如果当前节点不是head的后继节点：
+             * 判断当前节点的前继节点的状态是否是SIGNAL，如果不是则尝试设置前继节点的状态为SIGNAL；
+             * 上面两个条件如果有一个返回true，则再判断前继节点的thread是否不为空；
+             * 若满足以上条件，则尝试设置当前节点的前继节点的后继节点为当前节点的后继节点，也就是相当于将当前节点从队列中删除
+             */
             if (pred != head &&
                 ((ws = pred.waitStatus) == Node.SIGNAL ||
                  (ws <= 0 && compareAndSetWaitStatus(pred, ws, Node.SIGNAL))) &&
@@ -795,6 +810,7 @@ public abstract class AbstractQueuedSynchronizer
                 if (next != null && next.waitStatus <= 0)
                     compareAndSetNext(pred, predNext, next);
             } else {
+                // 3.如果是head的后继节点或者状态判断或设置失败，则唤醒当前节点的后继节点
                 unparkSuccessor(node);
             }
 
@@ -814,7 +830,7 @@ public abstract class AbstractQueuedSynchronizer
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
         //前驱节点的等待状态
         int ws = pred.waitStatus;
-        //状态为signal，表示当前线程处于等待状态，直接放回true
+        //前节点的状态为signal，需要park
         if (ws == Node.SIGNAL)
             /*
              * This node has already set status asking a release
@@ -838,6 +854,7 @@ public abstract class AbstractQueuedSynchronizer
              * need a signal, but don't park yet.  Caller will need to
              * retry to make sure it cannot acquire before parking.
              */
+            //其他情况，设置前继节点的状态为SIGNAL
             compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
         }
         return false;
@@ -855,9 +872,11 @@ public abstract class AbstractQueuedSynchronizer
      *
      * @return {@code true} if interrupted
      */
-    //堵塞当前线程
+    //堵塞当前线程 然后返回线程的中断状态并复位中断状态。
     private final boolean parkAndCheckInterrupt() {
         LockSupport.park(this);
+        //interrupt 的作用是获取当前线程的中断状态并复位。也就是说，如果当前线程是中断状态，则第一次用该方法是true 然后复位 第二次则返回false。
+        //而isInterrupted方法是返回线程中断状态  不复位
         return Thread.interrupted();
     }
 
@@ -887,16 +906,17 @@ public abstract class AbstractQueuedSynchronizer
             boolean interrupted = false;
             //自旋过程，其实就是一个死循环而已
             for (;;) {
-                //当前线程的前驱节点
+                //当前线程的前继节点
                 final Node p = node.predecessor();
                 //当前线程的前驱节点式头节点，且同步状态成功
                 if (p == head && tryAcquire(arg)) {
+                    //设置head为当前节点(head中不包含thread)
                     setHead(node);
                     p.next = null; // help GC
                     failed = false;
                     return interrupted;
                 }
-                //获取同步状态失败，线程等待
+                // 如果p不是head或者获取锁失败，判断是否需要进行park  如果一直每个加入CLH的节点都不断的死循环 会导致oom
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     parkAndCheckInterrupt())
                     interrupted = true;
