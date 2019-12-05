@@ -127,15 +127,21 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * subclasses, but both need nonfair try for trylock method.
          */
         final boolean nonfairTryAcquire(int acquires) {
+            //当前线程
             final Thread current = Thread.currentThread();
+            //获取同步状态
             int c = getState();
+            //state == 0,表示没有该锁处于空闲状态
             if (c == 0) {
+                //获取锁成功，设置为当前线程所有
                 if (compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);
                     return true;
                 }
             }
+            //判断锁持有的线程是否为当前线程
             else if (current == getExclusiveOwnerThread()) {
+                //线程重入
                 int nextc = c + acquires;
                 if (nextc < 0) // overflow
                     throw new Error("Maximum lock count exceeded");
@@ -146,10 +152,13 @@ public class ReentrantLock implements Lock, java.io.Serializable {
         }
 
         protected final boolean tryRelease(int releases) {
+            //减掉releases
             int c = getState() - releases;
+            //如果释放的不是持有锁的线程，抛出异常
             if (Thread.currentThread() != getExclusiveOwnerThread())
                 throw new IllegalMonitorStateException();
             boolean free = false;
+            //state == 0 表示已经释放完全了，其他线程可以获取同步状态了
             if (c == 0) {
                 free = true;
                 setExclusiveOwnerThread(null);
@@ -203,9 +212,11 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * acquire on failure.
          */
         final void lock() {
+            //cas 操作 尝试获取锁
             if (compareAndSetState(0, 1))
                 setExclusiveOwnerThread(Thread.currentThread());
             else
+                //获取失败，调用AQS的acquire(int arg)方法
                 acquire(1);
         }
 
@@ -232,6 +243,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             final Thread current = Thread.currentThread();
             int c = getState();
             if (c == 0) {
+                //非公平获取锁：主要是判断当前线程是否位于CLH同步队列中的第一个。如果是则返回true，否则返回false。
                 if (!hasQueuedPredecessors() &&
                     compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);

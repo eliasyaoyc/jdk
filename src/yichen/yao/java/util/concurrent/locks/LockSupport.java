@@ -170,9 +170,13 @@ public class LockSupport {
      * @since 1.6
      */
     public static void park(Object blocker) {
+        //获取当前线程
         Thread t = Thread.currentThread();
+        //记录当前线程阻塞的原因,底层就是unsafe.putObject,就是把对象存储起来
         setBlocker(t, blocker);
+        //执行park
         UNSAFE.park(false, 0L);
+        //线程恢复后，去掉阻塞原因
         setBlocker(t, null);
     }
 
