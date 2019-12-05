@@ -243,7 +243,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             final Thread current = Thread.currentThread();
             int c = getState();
             if (c == 0) {
-                //非公平获取锁：主要是判断当前线程是否位于CLH同步队列中的第一个。如果是则返回true，否则返回false。
+                //公平获取锁：主要是判断当前线程是否位于CLH同步队列中的第一个。如果是则返回true，否则返回false。
                 if (!hasQueuedPredecessors() &&
                     compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);

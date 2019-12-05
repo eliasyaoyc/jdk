@@ -725,7 +725,9 @@ public abstract class AbstractQueuedSynchronizer
      * @param propagate the return value from a tryAcquireShared
      */
     private void setHeadAndPropagate(Node node, int propagate) {
+        //记录之前的head
         Node h = head; // Record old head for check below
+        //设置当前node为head
         setHead(node);
         /*
          * Try to signal next queued node if:
@@ -1047,14 +1049,17 @@ public abstract class AbstractQueuedSynchronizer
      */
     private void doAcquireSharedInterruptibly(int arg)
         throws InterruptedException {
+        // 创建一个共享模式的节点
         final Node node = addWaiter(Node.SHARED);
         boolean failed = true;
         try {
             for (;;) {
                 final Node p = node.predecessor();
                 if (p == head) {
+                    // 如果 p == head 表示是队列的第一个节点，尝试获取
                     int r = tryAcquireShared(arg);
                     if (r >= 0) {
+                        // 设置当前节点为head，并向后面的节点传播
                         setHeadAndPropagate(node, r);
                         p.next = null; // help GC
                         failed = false;
@@ -1376,9 +1381,12 @@ public abstract class AbstractQueuedSynchronizer
      */
     public final void acquireSharedInterruptibly(int arg)
             throws InterruptedException {
+        // 如果线程被中断则抛出异常
         if (Thread.interrupted())
             throw new InterruptedException();
+        // 尝试获取共享锁，该方法在Sync类中实现  -1失败  1成功
         if (tryAcquireShared(arg) < 0)
+            // 如果获取失败，需要根据当前线程创建一个mode为SHARE的的Node放入队列中并循环获取
             doAcquireSharedInterruptibly(arg);
     }
 
