@@ -12,8 +12,17 @@ public class ReentrantReadWriteLockTest {
         ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
         ReadLock readLock = reentrantReadWriteLock.readLock();
         readLock.lock();
-//        readLock.unlock();
-//        WriteLock writeLock = reentrantReadWriteLock.writeLock();
-//        writeLock.lock();
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                readLock.lock();
+            }
+        });
+        thread.start();
+        readLock.unlock();
+        //读锁的实现原理和reentrantLock 一样  基于独占锁
+        WriteLock writeLock = reentrantReadWriteLock.writeLock();
+        writeLock.lock();
+        writeLock.unlock();
     }
 }

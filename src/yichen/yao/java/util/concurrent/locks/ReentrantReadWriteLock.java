@@ -259,24 +259,41 @@ public class ReentrantReadWriteLock
          * and the upper the shared (reader) hold count.
          */
 
+        //常量值
         static final int SHARED_SHIFT   = 16;
+        //左移16位后，二进制值是10000000000000000，十进制值是65536
         static final int SHARED_UNIT    = (1 << SHARED_SHIFT);
+        //左移16位后再减一，十进制值是65535
+        //这个常量值用于标识最多支持65535个递归写入锁或65535个读取锁
         static final int MAX_COUNT      = (1 << SHARED_SHIFT) - 1;
+        //左移16位后再减一，二进制值是1111111111111111
         static final int EXCLUSIVE_MASK = (1 << SHARED_SHIFT) - 1;
 
         /** Returns the number of shared holds represented in count  */
-        static int sharedCount(int c)    { return c >>> SHARED_SHIFT; }
+        //用于计算持有读取锁的线程数
+        static int sharedCount(int c)    {
+            //无符号右移动16位
+            //如果c是32位，无符号右移后，得到是高16位的值
+            return c >>> SHARED_SHIFT;
+        }
         /** Returns the number of exclusive holds represented in count  */
-        static int exclusiveCount(int c) { return c & EXCLUSIVE_MASK; }
+        //用于计算写入锁的重入次数
+        static int exclusiveCount(int c) {
+            //如果c是32位，和1111111111111111做&运算，得到的低16位的值
+            return c & EXCLUSIVE_MASK;
+        }
 
         /**
          * A counter for per-thread read hold counts.
          * Maintained as a ThreadLocal; cached in cachedHoldCounter
          */
+        //用于每个线程持有读取锁的计数
         static final class HoldCounter {
             //计数器count
             int count = 0;
             // Use id, not reference, to avoid garbage retention
+            //当前持有读取锁的线程ID
+            //这里使用线程ID而没有使用引用，避免垃圾收集器保留，导致无法回收
             final long tid = getThreadId(Thread.currentThread());
         }
 
@@ -284,9 +301,10 @@ public class ReentrantReadWriteLock
          * ThreadLocal subclass. Easiest to explicitly define for sake
          * of deserialization mechanics.
          */
-        static final class ThreadLocalHoldCounter
-            extends ThreadLocal<HoldCounter> {
+        //通过ThreadLocal维护每个线程的HoldCounter
+        static final class ThreadLocalHoldCounter extends ThreadLocal<HoldCounter> {
             public HoldCounter initialValue() {
+                //这里重写了ThreadLocal的initialValue方法
                 return new HoldCounter();
             }
         }
@@ -296,6 +314,8 @@ public class ReentrantReadWriteLock
          * Initialized only in constructor and readObject.
          * Removed whenever a thread's read hold count drops to 0.
          */
+        //当前线程持有的可重入读取锁的数量，仅在构造方法和readObject方法中被初始化
+        //当持有锁的数量为0时，移除此对象
         private transient ThreadLocalHoldCounter readHolds;
 
         /**
@@ -312,6 +332,7 @@ public class ReentrantReadWriteLock
          * <p>Accessed via a benign data race; relies on the memory
          * model's final field and out-of-thin-air guarantees.
          */
+        //成功获取读取锁的最近一个线程的计数
         private transient HoldCounter cachedHoldCounter;
 
         /**
@@ -332,10 +353,13 @@ public class ReentrantReadWriteLock
          * <p>This allows tracking of read holds for uncontended read
          * locks to be very cheap.
          */
+        //第一个获得读锁的线程
         private transient Thread firstReader = null;
+        //第一个获得读锁的线程持有读取锁的次数
         private transient int firstReaderHoldCount;
 
         Sync() {
+            //构建每个线程的HoldCounter
             readHolds = new ThreadLocalHoldCounter();
             setState(getState()); // ensures visibility of readHolds
         }
@@ -428,21 +452,25 @@ public class ReentrantReadWriteLock
                     firstReaderHoldCount--;
             //获取rh对象，并更新“当前线程获取锁的信息”
             } else {
+                //从缓存中把这个线程获取获取读锁的数量取出来
                 HoldCounter rh = cachedHoldCounter;
                 if (rh == null || rh.tid != getThreadId(current))
                     rh = readHolds.get();
                 int count = rh.count;
+                //<=1 这次释放直接就没锁了 所以就直接移出
                 if (count <= 1) {
                     readHolds.remove();
                     if (count <= 0)
                         throw unmatchedUnlockException();
                 }
+                //减一
                 --rh.count;
             }
             //CAS更新同步状态
             for (;;) {
                 int c = getState();
                 int nextc = c - SHARED_UNIT;
+                //直到cas设置成功为止
                 if (compareAndSetState(c, nextc))
                     // Releasing the read lock has no effect on readers,
                     // but it may allow waiting writers to proceed if
@@ -479,11 +507,11 @@ public class ReentrantReadWriteLock
             //exclusiveCount(c) != 0 ---》 用 state & 65535 得到低 16 位的值。如果不是0，说明写锁别持有了。
             //getExclusiveOwnerThread() != current----> 不是当前线程
             //如果写锁被霸占了，且持有线程不是当前线程，返回 false，加入队列。获取写锁失败。
-            //反之，如果持有写锁的是当前线程，就可以继续获取读锁了。
+            //反之，如果持有写锁的是当前线程，就可以继续获取读锁了。支持锁降级
             if (exclusiveCount(c) != 0 && getExclusiveOwnerThread() != current)
                 // 获取锁失败
                 return -1;
-            // 如果写锁没有被霸占，则将高16位移到低16位。 因为读锁在高16位  c>>>16
+            // 如果写锁没有被霸占，则将高16位移到低16位。 因为读锁在高16位  c>>>16 获取读锁的获取数量
             int r = sharedCount(c);
             /*
              * !readerShouldBlock()和写锁的逻辑一样（根据公平与否策略和队列是否含有等待节点）
@@ -493,7 +521,7 @@ public class ReentrantReadWriteLock
             if (!readerShouldBlock() && r < MAX_COUNT && compareAndSetState(c, c + SHARED_UNIT)) {
                 // 如果读锁是空闲的， 获取锁成功。
                 if (r == 0) {
-                    //将当前线程设置为第一个读锁线程
+                    //将当前线程设置为第一个读锁线程   因为读取锁可能都是一个线程在获取 这样是为了提升效率
                     firstReader = current;
                     //计数器为1
                     firstReaderHoldCount = 1;
@@ -502,7 +530,7 @@ public class ReentrantReadWriteLock
                     //计数器+1
                     firstReaderHoldCount++;
                 } else {
-                    // 如果读锁不是空闲的并且不是第一个线程，获取锁成功。
+                    // 如果读锁不是空闲的并且不是第一个线程，获取锁成功。  这种情况就是其他线程要来获取读锁
                     // cachedHoldCounter 代表的是最后一个获取读锁的线程的计数器。
                     HoldCounter rh = cachedHoldCounter;
                     // 如果最后一个线程计数器是 null 或者不是当前线程，那么就新建一个 HoldCounter 对象

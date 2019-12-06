@@ -702,11 +702,15 @@ public abstract class AbstractQueuedSynchronizer
             Node h = head;
             if (h != null && h != tail) {
                 int ws = h.waitStatus;
+                // 如果head的状态是SIGNAL，证明是等待一个信号，这时尝试将状态复位；
+                // 如果复位成功，则唤醒下一节点，否则继续循环。
                 if (ws == Node.SIGNAL) {
                     if (!compareAndSetWaitStatus(h, Node.SIGNAL, 0))
                         continue;            // loop to recheck cases
                     unparkSuccessor(h);
                 }
+                // 如果状态是0，尝试设置状态为传播状态，表示节点向后传播；
+                // 如果不成功则继续循环。
                 else if (ws == 0 &&
                          !compareAndSetWaitStatus(h, 0, Node.PROPAGATE))
                     continue;                // loop on failed CAS
@@ -748,6 +752,11 @@ public abstract class AbstractQueuedSynchronizer
         if (propagate > 0 || h == null || h.waitStatus < 0 ||
             (h = head) == null || h.waitStatus < 0) {
             Node s = node.next;
+            //如果这个节点的继节点是shared节点就唤醒下一个节点进行传播
+            //继节点等于null的这种情况只有在多线程并发的acquires/releases操作。所以大多数线程需要立即或者很快的unpark
+            //park之前执行过一次或多次unpark（unpark调用多次和一次是一样的，结果不会累加）这时执行park时并不会阻塞该线程。
+            //所以就是说在唤醒node的时候下一个节点刚好添加到队列中，就可能避免一次堵塞操作
+            //所以这里的propagete表示传播，传播的过程就是只要成功获取到共享锁就唤醒下一个节点
             if (s == null || s.isShared())
                 doReleaseShared();
         }
@@ -1059,6 +1068,7 @@ public abstract class AbstractQueuedSynchronizer
                     // 如果 p == head 表示是队列的第一个节点，尝试获取
                     int r = tryAcquireShared(arg);
                     if (r >= 0) {
+                        // 获取锁成功 r = 1
                         // 设置当前节点为head，并向后面的节点传播
                         setHeadAndPropagate(node, r);
                         p.next = null; // help GC

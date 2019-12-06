@@ -170,6 +170,7 @@ public class CountDownLatch {
         }
 
         protected int tryAcquireShared(int acquires) {
+            //如果state等于0的时候，说明计数器为0了，返回1表示成功，否则返回-1表示失败。
             return (getState() == 0) ? 1 : -1;
         }
 
