@@ -153,12 +153,16 @@ public class CyclicBarrier {
     }
 
     /** The lock for guarding barrier entry */
+    //重入锁
     private final ReentrantLock lock = new ReentrantLock();
     /** Condition to wait on until tripped */
+    //条件锁
     private final Condition trip = lock.newCondition();
     /** The number of parties */
+    //需要等待的线程数
     private final int parties;
     /* The command to run when tripped */
+    //当唤醒的时候执行的命令
     private final Runnable barrierCommand;
     /** The current generation */
     private Generation generation = new Generation();
@@ -176,9 +180,12 @@ public class CyclicBarrier {
      */
     private void nextGeneration() {
         // signal completion of last generation
+        //调用condition的signalAll将其队列中的等待者全部转移到AQS的队列中
         trip.signalAll();
         // set up next generation
+        //重置count
         count = parties;
+        //进入下一代
         generation = new Generation();
     }
 
@@ -199,26 +206,34 @@ public class CyclicBarrier {
         throws InterruptedException, BrokenBarrierException,
                TimeoutException {
         final ReentrantLock lock = this.lock;
+        //独占锁 加锁
         lock.lock();
         try {
+            //当前代
             final Generation g = generation;
 
+            //检查
             if (g.broken)
                 throw new BrokenBarrierException();
 
+            //中断检查
             if (Thread.interrupted()) {
                 breakBarrier();
                 throw new InterruptedException();
             }
 
+            //count的值-1
             int index = --count;
+            // 如果数量减到0了，走这段逻辑(也就是说最后一个线程走到这的时候会触发下面的逻辑)
             if (index == 0) {  // tripped
                 boolean ranAction = false;
                 try {
+                    //如果初始化的时候传了命令，这里执行
                     final Runnable command = barrierCommand;
                     if (command != null)
                         command.run();
                     ranAction = true;
+                    //调用下一代方法
                     nextGeneration();
                     return 0;
                 } finally {
@@ -228,11 +243,16 @@ public class CyclicBarrier {
             }
 
             // loop until tripped, broken, interrupted, or timed out
+            //这里循环只有非最后一个线程可以走到， 无限循环直到触发，超时，中断，broken
             for (;;) {
                 try {
                     if (!timed)
+                        // 调用条件锁的await方法  当前节点放入条件对了中移出AQS中，调用park堵塞住
+                        // 当最后一个线程过来的时候会在上面调用nextGeneration方法把堵塞在condition队列中的节点添加到AQS中然后唤醒。
+                        // 唤醒之后往下走
                         trip.await();
                     else if (nanos > 0L)
+                        //如果设置的超时时间 那就调用条件锁的超时await方法
                         nanos = trip.awaitNanos(nanos);
                 } catch (InterruptedException ie) {
                     if (g == generation && ! g.broken) {
@@ -245,13 +265,15 @@ public class CyclicBarrier {
                         Thread.currentThread().interrupt();
                     }
                 }
-
+                //检查
                 if (g.broken)
                     throw new BrokenBarrierException();
-
+                //正常来说这里肯定不相等
+                //因为上面打破栅栏的时候调用nextGeneration()方法时generation的引用已经变化了
                 if (g != generation)
                     return index;
 
+                //超时检查
                 if (timed && nanos <= 0L) {
                     breakBarrier();
                     throw new TimeoutException();
@@ -276,8 +298,11 @@ public class CyclicBarrier {
      */
     public CyclicBarrier(int parties, Runnable barrierAction) {
         if (parties <= 0) throw new IllegalArgumentException();
+        //初始化parties   需要等待的线程数
         this.parties = parties;
+        //初始化count等于parties
         this.count = parties;
+        //初始化都达到栅栏处执行的命令
         this.barrierCommand = barrierAction;
     }
 
@@ -359,6 +384,7 @@ public class CyclicBarrier {
      */
     public int await() throws InterruptedException, BrokenBarrierException {
         try {
+            //调用dowait方法，不需要超时
             return dowait(false, 0L);
         } catch (TimeoutException toe) {
             throw new Error(toe); // cannot happen
