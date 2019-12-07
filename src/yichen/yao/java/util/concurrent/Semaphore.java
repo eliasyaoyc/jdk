@@ -166,41 +166,55 @@ public class Semaphore implements java.io.Serializable {
     abstract static class Sync extends AbstractQueuedSynchronizer {
         private static final long serialVersionUID = 1192457210091910933L;
 
+        //构造方法，传入许可次数
         Sync(int permits) {
             setState(permits);
         }
 
+        //获取许可次数
         final int getPermits() {
             return getState();
         }
 
+        // 非公平模式尝试获取许可
         final int nonfairTryAcquireShared(int acquires) {
             for (;;) {
+                //查看许可次数
                 int available = getState();
+                //减去这次获取得许可  剩余的许可
                 int remaining = available - acquires;
+                //如果许可剩余小于0可以直接返回
+                //如果剩余许可小于0，则尝试原子更新state的值，成功了返回剩余许可
                 if (remaining < 0 ||
                     compareAndSetState(available, remaining))
                     return remaining;
             }
         }
 
+        //释放许可
         protected final boolean tryReleaseShared(int releases) {
             for (;;) {
+                //许可个数
                 int current = getState();
+                //加上这次释放的许可
                 int next = current + releases;
                 if (next < current) // overflow
                     throw new Error("Maximum permit count exceeded");
+                // 如果原子更新state的值成功，就说明释放许可成功，则返回true
                 if (compareAndSetState(current, next))
                     return true;
             }
         }
-
+        //减少许可
         final void reducePermits(int reductions) {
             for (;;) {
+                //许可个数
                 int current = getState();
+                //减去 减少的许可
                 int next = current - reductions;
                 if (next > current) // underflow
                     throw new Error("Permit count underflow");
+                //cas更新
                 if (compareAndSetState(current, next))
                     return;
             }
