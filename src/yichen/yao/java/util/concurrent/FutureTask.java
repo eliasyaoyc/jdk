@@ -115,10 +115,13 @@ public class FutureTask<V> implements RunnableFuture<V> {
     @SuppressWarnings("unchecked")
     private V report(int s) throws ExecutionException {
         Object x = outcome;
+        //任务正常结束
         if (s == NORMAL)
             return (V)x;
+        //被取消了
         if (s >= CANCELLED)
             throw new CancellationException();
+        //执行异常
         throw new ExecutionException((Throwable)x);
     }
 
@@ -187,6 +190,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
      */
     public V get() throws InterruptedException, ExecutionException {
         int s = state;
+        //如果状态小于等于COMPLETING，则进入队列等待
         if (s <= COMPLETING)
             s = awaitDone(false, 0L);
         return report(s);
@@ -253,17 +257,23 @@ public class FutureTask<V> implements RunnableFuture<V> {
     }
 
     public void run() {
+        //状态不为NEW，或者修改为当前线程来运行这个任务失败，则直接返回
         if (state != NEW ||
             !UNSAFE.compareAndSwapObject(this, runnerOffset,
                                          null, Thread.currentThread()))
             return;
         try {
+            //真正的任务
             Callable<V> c = callable;
+            //state必须为NEW时才运行
             if (c != null && state == NEW) {
+                //运行的结果
                 V result;
                 boolean ran;
                 try {
+                    //任务执行的地方
                     result = c.call();
+                    //执行完毕
                     ran = true;
                 } catch (Throwable ex) {
                     result = null;
@@ -271,6 +281,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
                     setException(ex);
                 }
                 if (ran)
+                    //处理结果
                     set(result);
             }
         } finally {
@@ -395,28 +406,37 @@ public class FutureTask<V> implements RunnableFuture<V> {
      */
     private int awaitDone(boolean timed, long nanos)
         throws InterruptedException {
+        //是否设置了超时时间
         final long deadline = timed ? System.nanoTime() + nanos : 0L;
         WaitNode q = null;
         boolean queued = false;
         for (;;) {
+            //处理中断
             if (Thread.interrupted()) {
                 removeWaiter(q);
                 throw new InterruptedException();
             }
-
+            //4.如果状态大于COMPLETING了，则跳出循环并返回  自旋的出口
             int s = state;
             if (s > COMPLETING) {
                 if (q != null)
                     q.thread = null;
                 return s;
             }
+            //如果状态等于COMPLETING，说明任务快完成了，就差设置状态到NORMAL或EXCEPTIONAL和设置结果了
+            //这时候就让出CPU，优先完成任务
             else if (s == COMPLETING) // cannot time out yet
                 Thread.yield();
+            //1.如果队列为空
             else if (q == null)
+                //初始化队列（WaitNode中记录了调用者线程）
                 q = new WaitNode();
+            //2.未进入队列
             else if (!queued)
+                //尝试入队
                 queued = UNSAFE.compareAndSwapObject(this, waitersOffset,
                                                      q.next = waiters, q);
+            //超时处理
             else if (timed) {
                 nanos = deadline - System.nanoTime();
                 if (nanos <= 0L) {
@@ -425,6 +445,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
                 }
                 LockSupport.parkNanos(this, nanos);
             }
+            //3.阻塞当前线程（调用者线程）
             else
                 LockSupport.park(this);
         }

@@ -452,26 +452,35 @@ public class Exchanger<V> {
      * TIMED_OUT if timed and timed out
      */
     private final Object slotExchange(Object item, boolean timed, long ns) {
+        //获取当前线程的节点 p 从threadLocal中获取
         Node p = participant.get();
+        //当前线程
         Thread t = Thread.currentThread();
+        //线程中断， 直接返回
         if (t.isInterrupted()) // preserve interrupt status so caller can recheck
             return null;
 
+        //自旋
         for (Node q;;) {
+            //slot != null
             if ((q = slot) != null) {
+                //尝试CAS替换
                 if (U.compareAndSwapObject(this, SLOT, q, null)) {
-                    Object v = q.item;
-                    q.match = item;
-                    Thread w = q.parked;
+                    Object v = q.item; //当前线程的项，也就是交换的数据
+                    q.match = item; //做releasing操作的线程传递的项
+                    Thread w = q.parked;//挂起时设置线程值
                     if (w != null)
                         U.unpark(w);
                     return v;
                 }
                 // create arena on contention, but continue until slot null
+                //如果失败了，则创建arena
+                //bound 则是上次Exchanger.bound
                 if (NCPU > 1 && bound == 0 &&
                     U.compareAndSwapInt(this, BOUND, 0, SEQ))
                     arena = new Node[(FULL + 2) << ASHIFT];
             }
+            //如果arena != null，直接返回，进入arenaExchange逻辑处理
             else if (arena != null)
                 return null; // caller must reroute to arenaExchange
             else {
@@ -483,6 +492,10 @@ public class Exchanger<V> {
         }
 
         // await release
+        /*
+         * 等待 release
+         * 进入spin+block模式
+         */
         int h = p.hash;
         long end = timed ? System.nanoTime() + ns : 0L;
         int spins = (NCPU > 1) ? SPINS : 1;
@@ -557,12 +570,16 @@ public class Exchanger<V> {
      * @throws InterruptedException if the current thread was
      *         interrupted while waiting
      */
+    //等待另一个线程达到此交换点(除非当前线程被中断)，然后将给定的对象传给该线程，并接受该线程的对象。
+    //整套逻辑：如果slotExchange方法执行失败就执行arenaExchange方法，最后返回结果V。null_item为一个空节点，其实就是一个object对象。
     @SuppressWarnings("unchecked")
     public V exchange(V x) throws InterruptedException {
         Object v;
         Object item = (x == null) ? NULL_ITEM : x; // translate null args
         if ((arena != null ||
+             //如果arena为null 执行slotExchange。
              (v = slotExchange(item, false, 0L)) == null) &&
+             //如果arena不为null 判断线程是否中断 如果中断值抛出InterruptedException异常，没有中断则执行arenaExchange方法
             ((Thread.interrupted() || // disambiguates null return
               (v = arenaExchange(item, false, 0L)) == null)))
             throw new InterruptedException();

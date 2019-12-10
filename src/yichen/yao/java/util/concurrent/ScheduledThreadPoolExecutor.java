@@ -286,13 +286,19 @@ public class ScheduledThreadPoolExecutor
          * Overrides FutureTask version so as to reset/requeue if periodic.
          */
         public void run() {
+            //是否重复执行
             boolean periodic = isPeriodic();
+            //线程池状态判断
             if (!canRunInCurrentRunState(periodic))
                 cancel(false);
+            //一次性任务，直接调用父类的run()方法，这个父类实际上是FutureTask
             else if (!periodic)
                 ScheduledFutureTask.super.run();
+            //重复性任务，先调用父类的runAndReset()方法，这个父类也是FutureTask
             else if (ScheduledFutureTask.super.runAndReset()) {
+                //设置下次执行的时间
                 setNextRunTime();
+                //重复执行
                 reExecutePeriodic(outerTask);
             }
         }
@@ -322,15 +328,19 @@ public class ScheduledThreadPoolExecutor
      * @param task the task
      */
     private void delayedExecute(RunnableScheduledFuture<?> task) {
+        // 如果线程池关闭了，执行拒绝策略
         if (isShutdown())
             reject(task);
         else {
+            //先把任务扔到队列中去
             super.getQueue().add(task);
+            //再次检查线程池状态
             if (isShutdown() &&
                 !canRunInCurrentRunState(task.isPeriodic()) &&
                 remove(task))
                 task.cancel(false);
             else
+                //保证有足够有线程执行任务
                 ensurePrestart();
         }
     }
@@ -555,21 +565,26 @@ public class ScheduledThreadPoolExecutor
      * @throws NullPointerException       {@inheritDoc}
      * @throws IllegalArgumentException   {@inheritDoc}
      */
+    //按固定频率执行的任务
     public ScheduledFuture<?> scheduleAtFixedRate(Runnable command,
                                                   long initialDelay,
                                                   long period,
                                                   TimeUnit unit) {
+        //参数判断
         if (command == null || unit == null)
             throw new NullPointerException();
         if (period <= 0)
             throw new IllegalArgumentException();
+        //将普通任务装饰城ScheduledFutureTask
         ScheduledFutureTask<Void> sft =
             new ScheduledFutureTask<Void>(command,
                                           null,
                                           triggerTime(initialDelay, unit),
                                           unit.toNanos(period));
+        //钩子方法，给子类用来替换装饰task，这里认为t===sft
         RunnableScheduledFuture<Void> t = decorateTask(command, sft);
         sft.outerTask = t;
+        //延迟执行
         delayedExecute(t);
         return t;
     }
