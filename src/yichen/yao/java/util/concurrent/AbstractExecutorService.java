@@ -99,6 +99,7 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * @since 1.6
      */
     protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
+        //将普通任务包装成FutureTask
         return new FutureTask<T>(callable);
     }
 
@@ -129,8 +130,11 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * @throws NullPointerException       {@inheritDoc}
      */
     public <T> Future<T> submit(Callable<T> task) {
+        //非空检测
         if (task == null) throw new NullPointerException();
+        //包装成FutureTask
         RunnableFuture<T> ftask = newTaskFor(task);
+        //交给execute()方法去执行
         execute(ftask);
         return ftask;
     }
