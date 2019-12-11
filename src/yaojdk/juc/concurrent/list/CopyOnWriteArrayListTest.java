@@ -1,4 +1,4 @@
-package yaojdk.juc.concurrent;
+package yaojdk.juc.concurrent.list;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 
