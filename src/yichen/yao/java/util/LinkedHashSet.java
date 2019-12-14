@@ -130,6 +130,7 @@ public class LinkedHashSet<E>
      * @throws     IllegalArgumentException  if the initial capacity is less
      *               than zero, or if the load factor is nonpositive
      */
+    //传入容量和装载因子
     public LinkedHashSet(int initialCapacity, float loadFactor) {
         super(initialCapacity, loadFactor, true);
     }
@@ -142,6 +143,7 @@ public class LinkedHashSet<E>
      * @throws  IllegalArgumentException if the initial capacity is less
      *              than zero
      */
+    //只传入容量, 装载因子默认为0.75
     public LinkedHashSet(int initialCapacity) {
         super(initialCapacity, .75f, true);
     }
@@ -150,6 +152,7 @@ public class LinkedHashSet<E>
      * Constructs a new, empty linked hash set with the default initial
      * capacity (16) and load factor (0.75).
      */
+    //使用默认容量16, 默认装载因子0.75
     public LinkedHashSet() {
         super(16, .75f, true);
     }
@@ -164,6 +167,8 @@ public class LinkedHashSet<E>
      *           this set
      * @throws NullPointerException if the specified collection is null
      */
+    //将集合c中的所有元素添加到LinkedHashSet中
+    //HashSet中使用的是Math.max((int) (c.size()/.75f) + 1, 16)
     public LinkedHashSet(Collection<? extends E> c) {
         super(Math.max(2*c.size(), 11), .75f, true);
         addAll(c);
@@ -188,6 +193,7 @@ public class LinkedHashSet<E>
      * @return a {@code Spliterator} over the elements in this set
      * @since 1.8
      */
+    //可分割的迭代器, 主要用于多线程并行迭代处理时使用
     @Override
     public Spliterator<E> spliterator() {
         return Spliterators.spliterator(this, Spliterator.DISTINCT | Spliterator.ORDERED);

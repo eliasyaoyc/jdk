@@ -96,12 +96,13 @@ import java.util.function.Consumer;
 public class CopyOnWriteArraySet<E> extends AbstractSet<E>
         implements java.io.Serializable {
     private static final long serialVersionUID = 5457747651344034263L;
-
+    //内部使用CopyOnWriteArrayList存储元素
     private final CopyOnWriteArrayList<E> al;
 
     /**
      * Creates an empty set.
      */
+    //构造方法
     public CopyOnWriteArraySet() {
         al = new CopyOnWriteArrayList<E>();
     }
@@ -113,13 +114,19 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
      * @param c the collection of elements to initially contain
      * @throws NullPointerException if the specified collection is null
      */
+    //将集合c中的元素初始化到CopyOnWriteArraySet中
     public CopyOnWriteArraySet(Collection<? extends E> c) {
         if (c.getClass() == CopyOnWriteArraySet.class) {
+            //如果c是CopyOnWriteArraySet类型，说明没有重复元素，
+            //直接调用CopyOnWriteArrayList的构造方法初始化
             @SuppressWarnings("unchecked") CopyOnWriteArraySet<E> cc =
                 (CopyOnWriteArraySet<E>)c;
             al = new CopyOnWriteArrayList<E>(cc.al);
         }
         else {
+            //如果c不是CopyOnWriteArraySet类型，说明有重复元素
+            //调用CopyOnWriteArrayList的addAllAbsent()方法初始化
+            //它会把重复元素排除掉
             al = new CopyOnWriteArrayList<E>();
             al.addAllAbsent(c);
         }
@@ -130,6 +137,7 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
      *
      * @return the number of elements in this set
      */
+    //获取元素个数
     public int size() {
         return al.size();
     }
@@ -139,6 +147,7 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
      *
      * @return {@code true} if this set contains no elements
      */
+    //检查集合是否为空
     public boolean isEmpty() {
         return al.isEmpty();
     }
@@ -152,6 +161,7 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
      * @param o element whose presence in this set is to be tested
      * @return {@code true} if this set contains the specified element
      */
+    //检查是否包含某个元素
     public boolean contains(Object o) {
         return al.contains(o);
     }
@@ -172,6 +182,7 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
      *
      * @return an array containing all the elements in this set
      */
+    //集合转数组
     public Object[] toArray() {
         return al.toArray();
     }
@@ -217,6 +228,7 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
      *         set
      * @throws NullPointerException if the specified array is null
      */
+    //集合转数组，这里是可能有bug的，详情见ArrayList中分析
     public <T> T[] toArray(T[] a) {
         return al.toArray(a);
     }
@@ -225,6 +237,7 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
      * Removes all of the elements from this set.
      * The set will be empty after this call returns.
      */
+    //清空所有元素
     public void clear() {
         al.clear();
     }

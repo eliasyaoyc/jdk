@@ -93,15 +93,18 @@ public class HashSet<E>
 {
     static final long serialVersionUID = -5024744406713321676L;
 
+    //内部使用hashMap
     private transient HashMap<E,Object> map;
 
     // Dummy value to associate with an Object in the backing Map
+    //虚拟对象，用来作为value放到map中
     private static final Object PRESENT = new Object();
 
     /**
      * Constructs a new, empty set; the backing <tt>HashMap</tt> instance has
      * default initial capacity (16) and load factor (0.75).
      */
+    //空构造方法
     public HashSet() {
         map = new HashMap<>();
     }
@@ -115,6 +118,7 @@ public class HashSet<E>
      * @param c the collection whose elements are to be placed into this set
      * @throws NullPointerException if the specified collection is null
      */
+    //把另一个集合的元素全都添加到当前Set中  注意，这里初始化map的时候是计算了它的初始容量的
     public HashSet(Collection<? extends E> c) {
         map = new HashMap<>(Math.max((int) (c.size()/.75f) + 1, 16));
         addAll(c);
@@ -129,6 +133,7 @@ public class HashSet<E>
      * @throws     IllegalArgumentException if the initial capacity is less
      *             than zero, or if the load factor is nonpositive
      */
+    //指定初始容量和装载因子
     public HashSet(int initialCapacity, float loadFactor) {
         map = new HashMap<>(initialCapacity, loadFactor);
     }
@@ -141,6 +146,7 @@ public class HashSet<E>
      * @throws     IllegalArgumentException if the initial capacity is less
      *             than zero
      */
+    //只指定初始容量
     public HashSet(int initialCapacity) {
         map = new HashMap<>(initialCapacity);
     }
@@ -158,6 +164,7 @@ public class HashSet<E>
      * @throws     IllegalArgumentException if the initial capacity is less
      *             than zero, or if the load factor is nonpositive
      */
+    //专属给LinkedHashSet使用的
     HashSet(int initialCapacity, float loadFactor, boolean dummy) {
         map = new LinkedHashMap<>(initialCapacity, loadFactor);
     }
@@ -216,6 +223,7 @@ public class HashSet<E>
      * @return <tt>true</tt> if this set did not already contain the specified
      * element
      */
+    //直接调用HashMap的put方法，将元素本身作为key。把present作为value。也就是在这个map中value都是一样的
     public boolean add(E e) {
         return map.put(e, PRESENT)==null;
     }
