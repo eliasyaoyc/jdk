@@ -96,6 +96,7 @@ public class ArrayDeque<E> extends AbstractCollection<E>
      * other.  We also guarantee that all array cells not holding
      * deque elements are always null.
      */
+    //存储元素的数组
     transient Object[] elements; // non-private to simplify nested class access
 
     /**
@@ -103,22 +104,27 @@ public class ArrayDeque<E> extends AbstractCollection<E>
      * element that would be removed by remove() or pop()); or an
      * arbitrary number equal to tail if the deque is empty.
      */
+    //队列头位置
     transient int head;
 
     /**
      * The index at which the next element would be added to the tail
      * of the deque (via addLast(E), add(E), or push(E)).
      */
+    //队列尾位置
     transient int tail;
 
     /**
      * The minimum capacity that we'll use for a newly created deque.
      * Must be a power of 2.
      */
+    //最小初始容量
     private static final int MIN_INITIAL_CAPACITY = 8;
 
     // ******  Array allocation and resizing utilities ******
 
+    //计算容量，这段代码的逻辑是算出大于numElements的最接近的2的n次方且不小于8
+    //比如，3算出来是8，9算出来是16，33算出来是64
     private static int calculateSize(int numElements) {
         int initialCapacity = MIN_INITIAL_CAPACITY;
         // Find the best power of two to hold elements.
@@ -143,6 +149,7 @@ public class ArrayDeque<E> extends AbstractCollection<E>
      *
      * @param numElements  the number of elements to hold
      */
+    //初始化数组
     private void allocateElements(int numElements) {
         elements = new Object[calculateSize(numElements)];
     }
@@ -189,6 +196,7 @@ public class ArrayDeque<E> extends AbstractCollection<E>
      * Constructs an empty array deque with an initial capacity
      * sufficient to hold 16 elements.
      */
+    //默认构造方法，初始容量为16
     public ArrayDeque() {
         elements = new Object[16];
     }
@@ -199,6 +207,7 @@ public class ArrayDeque<E> extends AbstractCollection<E>
      *
      * @param numElements  lower bound on initial capacity of the deque
      */
+    //指定元素个数初始化
     public ArrayDeque(int numElements) {
         allocateElements(numElements);
     }
@@ -213,6 +222,7 @@ public class ArrayDeque<E> extends AbstractCollection<E>
      * @param c the collection whose elements are to be placed into the deque
      * @throws NullPointerException if the specified collection is null
      */
+    //将集合c中的元素初始化到数组中
     public ArrayDeque(Collection<? extends E> c) {
         allocateElements(c.size());
         addAll(c);
