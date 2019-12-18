@@ -42,10 +42,10 @@ public class MyTest16 extends ClassLoader {
         byte[] data = null;
         ByteArrayOutputStream baos = null;
         try {
-            this.classLoaderName = this.classLoaderName.replace(".", "/");
+            name = name.replace(".", "/");
             is = new FileInputStream(new File(this.path + name + this.fileExtension));
             baos = new ByteArrayOutputStream();
-            int ch = 0;
+            int ch;
             while (-1 != (ch = is.read())) {
                 baos.write(ch);
             }
@@ -65,18 +65,29 @@ public class MyTest16 extends ClassLoader {
 
     public static void main(String[] args) throws Exception{
         MyTest16 loader1 = new MyTest16("loader1");
-        loader1.setPath("/Users/koso/Desktop/project/yichen.yao/yaoJdk/out/production/yaoJdk/");
+        loader1.setPath("/Users/koso/yyichen/");
         Class<?> aClass = loader1.loadClass("yaojdk.jvm.classloader.MyTest1");
         System.out.println("class: " + aClass.hashCode());
         Object o = aClass.newInstance();
         System.out.println(o);
+        System.out.println();
+        loader1 = null;
+        aClass = null;
+        o = null;
+        System.gc();
+        loader1 = new MyTest16("loader1");
+        loader1.setPath("/Users/koso/yyichen/");
+        aClass = loader1.loadClass("yaojdk.jvm.classloader.MyTest1");
+        System.out.println("class: " + aClass.hashCode());
+        o = aClass.newInstance();
+        System.out.println(o);
 
-        MyTest16 loader2 = new MyTest16("loader2");
-        loader1.setPath("/Users/koso/Desktop/project/yichen.yao/yaoJdk/out/production/yaoJdk/");
-        Class<?> aClass2 = loader2.loadClass("yaojdk.jvm.classloader.MyTest1");
-        System.out.println("class: " + aClass2.hashCode());
-        Object o2 = aClass.newInstance();
-        System.out.println(o2);
+//        MyTest16 loader2 = new MyTest16("loader2");
+//        loader1.setPath("/Users/koso/Desktop/project/yichen.yao/yaJdk/out/production/yaoJdk/");
+//        Class<?> aClass2 = loader2.loadClass("yaojdk.jvm.classloader.MyTest1");
+//        System.out.println("class: " + aClass2.hashCode());
+//        Object o2 = aClass.newInstance();
+//        System.out.println(o2);
 
     }
 }
